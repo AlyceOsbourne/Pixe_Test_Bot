@@ -1,0 +1,6 @@
+/.env
+/memo.sqlite
+/reminder.sqlite
+/.idea
+/__pycache__
+/*/__pycache__
