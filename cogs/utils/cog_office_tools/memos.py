@@ -30,6 +30,7 @@ class MemoCog(commands.Cog):
 
     @commands.command(name='memo', aliases=['memo_add'])
     async def add_memo(self, ctx, title, *, memo):
+        """Add a memo to the memo database"""
         async with aiosqlite.connect('memo.sqlite') as db:
             await db.execute('''
                 INSERT INTO memo (title, content, date, author)
@@ -41,6 +42,7 @@ class MemoCog(commands.Cog):
     # get memo
     @commands.command(name='memo_get')
     async def get_memo(self, ctx, title):
+        """Get a memo from the memo database"""
         async with aiosqlite.connect('memo.sqlite') as db:
             cursor = await db.execute('''
                 SELECT * FROM memo WHERE title = ?
@@ -55,6 +57,7 @@ class MemoCog(commands.Cog):
 
     @commands.command(name='memo_list', aliases=['memo_ls'])
     async def list_memos(self, ctx):
+        """List all memos in the memo database"""
         async with aiosqlite.connect('memo.sqlite') as db:
             cursor = await db.execute('''
                 SELECT * FROM memo
@@ -70,6 +73,7 @@ class MemoCog(commands.Cog):
 
     @commands.command(name='memo_delete', aliases=['memo_del'])
     async def delete_memo(self, ctx, title):
+        """Delete a memo from the memo database"""
         async with aiosqlite.connect('memo.sqlite') as db:
             await db.execute('''
                 DELETE FROM memo WHERE title = ?
@@ -80,6 +84,7 @@ class MemoCog(commands.Cog):
     @commands.command(name='memo_clear', aliases=['memo_clr'])
     @application_checks.is_owner()
     async def clear_memos(self, ctx):
+        """Clear all memos from the memo database"""
         async with aiosqlite.connect('memo.sqlite') as db:
             await db.execute('''
                 DELETE FROM memo
@@ -90,6 +95,7 @@ class MemoCog(commands.Cog):
     @commands.command(name='memo_clear_user', aliases=['memo_clr_user'])
     @application_checks.is_owner()
     async def clear_memos_user(self, ctx, user: nextcord.User):
+        """Clear all memos from the memo database for a specific user"""
         async with aiosqlite.connect('memo.sqlite') as db:
             await db.execute('''
                 DELETE FROM memo WHERE author = ?
@@ -101,6 +107,7 @@ class MemoCog(commands.Cog):
     @commands.command(name='memo_clear_before', aliases=['memo_clr_before'])
     @application_checks.is_owner()
     async def clear_memos_before(self, ctx, date):
+        """Clear all memos from the memo database before a date"""
         async with aiosqlite.connect('memo.sqlite') as db:
             await db.execute('''
                 DELETE FROM memo WHERE date < ?

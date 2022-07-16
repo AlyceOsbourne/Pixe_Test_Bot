@@ -160,6 +160,7 @@ class ReminderCog(commands.Cog):
     # add reminder
     @commands.command(name='reminder', aliases=['reminder_add'])
     async def add_reminder(self, ctx: Context, *, title):
+        """Add a reminder"""
         await ctx.message.delete()
         current_question_retries = 0
         description = None
@@ -193,6 +194,7 @@ class ReminderCog(commands.Cog):
 
     @commands.command(name='reminder_list', aliases=['reminder_ls'])
     async def list_reminders(self, ctx):
+        """List all reminders"""
         async with aiosqlite.connect('reminder.sqlite') as db:
             cursor = await db.execute('''
                 SELECT * FROM reminder WHERE author = ?
@@ -208,6 +210,7 @@ class ReminderCog(commands.Cog):
 
     @commands.command(name='reminder_delete', aliases=['reminder_del'])
     async def delete_reminder(self, ctx, title):
+        """Delete a reminder"""
         async with aiosqlite.connect('reminder.sqlite') as db:
             # get reminder from title
             cursor = await db.execute('''

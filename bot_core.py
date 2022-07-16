@@ -1,5 +1,7 @@
 # use nextcord.ext.commands.PixieBot to create the bot
+import logging
 import os
+from types import TracebackType
 
 import nextcord
 from nextcord.ext import commands, tasks
@@ -28,6 +30,7 @@ class PixieBot(commands.Bot):
         'games',
         'music',
         'moderation',
+        'community',
         'metrics'
     )
 
@@ -36,23 +39,28 @@ class PixieBot(commands.Bot):
             command_prefix=getenv('PREFIX'),
             intents=nextcord.Intents.all()
         )
+        self.logger = logging.getLogger('PixieBot')
 
     def load_cogs(self):
         cogs_path = join(dirname(__file__), 'cogs')
         if not exists(cogs_path):
             os.mkdir(cogs_path)
         for cog_directory in self.cog_directories:
-            dir_path = join(cogs_path, cog_directory)
-            if not exists(dir_path):
-                os.mkdir(dir_path)
-            else:
-                for file in os.listdir(dir_path):
-                    if file.startswith('cog_'):
-                        if file.endswith('.py'):
-                            self.load_extension(f'cogs.{cog_directory}.{file[:-3]}')
-                        elif isdir(join(dir_path, file)):
-                            if isfile(join(dir_path, file, '__init__.py')):
-                                self.load_extension(f'cogs.{cog_directory}.{file}')
+            try:
+                dir_path = join(cogs_path, cog_directory)
+                if not exists(dir_path):
+                    os.mkdir(dir_path)
+                else:
+                    for file in os.listdir(dir_path):
+                        if file.startswith('cog_'):
+                            if file.endswith('.py'):
+                                self.load_extension(f'cogs.{cog_directory}.{file[:-3]}')
+                            elif isdir(join(dir_path, file)):
+                                if isfile(join(dir_path, file, '__init__.py')):
+                                    self.load_extension(f'cogs.{cog_directory}.{file}')
+            except Exception as e:
+                print(f'Failed to load cog {cog_directory}')
+                print(e)
 
     # on ready event
     @commands.Cog.listener()

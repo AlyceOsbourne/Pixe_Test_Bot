@@ -1,6 +1,8 @@
 """Cog to play Hangman with the bot. gets random words from"""
 import asyncio
+from collections.abc import Iterable
 
+import nextcord
 from nextcord import Embed, Thread as TextThread
 from nextcord.ext import commands, tasks
 from nextcord.ext.commands import Context
@@ -36,7 +38,6 @@ class HangManInstance:
             letter for letter in self.word
         )
 
-
     def guess(self, letter):
         state = 0
         if len(letter) == 1:
@@ -52,10 +53,10 @@ class HangManInstance:
             return state
 
     def is_over(self):
-        return self.tries == 0 or len(self.guessed_letters) == len(self.letters)
+        return self.tries == 0 or self.guessed_letters == self.letters
 
     def is_won(self):
-        return len(self.guessed_letters) == len(self.letters)
+        return self.guessed_letters == self.letters
 
     def get_word(self):
         return self.word
@@ -100,7 +101,7 @@ class HangMan(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='hangman', aliases=['hm'])
+    @commands.command(name='hangman')
     async def hangman(self, ctx: Context, *, game_mode: str = 'default'):
         # create a new game
         await ctx.message.delete()
@@ -136,26 +137,26 @@ class HangMan(commands.Cog):
                 result = game.guess(guess.content.lower())
                 await guess.delete()
 
-                embed = await game.update_game_embed(Embed(title="Hangman"))
-                current = await current.edit(embed=embed)
-                if game.is_over():
-                    current = await current.edit(
-                        embed=Embed(
-                            title="Hangman",
-                            description=f"`{game.get_word()}\n{description}\nCompleted with {game.get_tries()} tries remaining!\n`",
-                            color=0x00ff00 if game.is_won() else 0xFF0000
-                        )
+            embed = await game.update_game_embed(Embed(title="Hangman"))
+            current = await current.edit(embed=embed)
+            
+            if game.is_over():
+                current = await current.edit(
+                    embed=Embed(
+                        title="Hangman",
+                        description=f"`{'You Won!' if game.is_won() else 'You Lose'}\n\n`{game.get_word()}`\n`{description}`\nCompleted with `{game.get_tries()}` tries remaining!\n`",
+                        color=0x00ff00 if game.is_won() else 0xFF0000
                     )
-                    await current.delete(delay=300)
-                    break
-                if result == 1:
-                    await ctx.send('Correct!', delete_after=15)
-                elif result == 0:
-                    await ctx.send('Already guessed!', delete_after=15)
-                elif result == -1:
-                    await ctx.send('Wrong!', delete_after=15)
-                    await ctx.send(f'You have {game.get_tries()} tries left!', delete_after=15)
-
+                )
+                await current.delete(delay=300)
+                break
+            if result == 1:
+                await ctx.send('Correct!', delete_after=5)
+            elif result == 0:
+                await ctx.send('Already guessed!', delete_after=5)
+            elif result == -1:
+                await ctx.send('Wrong!', delete_after=5)
+                await ctx.send(f'You have {game.get_tries()} tries left!', delete_after=5)
 
 
 def setup(bot):
