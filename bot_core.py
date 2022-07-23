@@ -1,17 +1,13 @@
 # use nextcord.ext.commands.PixieBot to create the bot
 import logging
 import os
-from types import TracebackType
+import traceback
 
 import nextcord
 from nextcord.ext import commands, tasks
-from nextcord.ui import button
 from dotenv import load_dotenv
 from os import getenv
 from os.path import join, dirname, isdir, isfile, exists
-import asyncio
-
-from nextcord.ext.commands import Context
 
 load_dotenv(join(dirname(__file__), '.env'))
 
@@ -25,21 +21,24 @@ if getenv('TOKEN') is None or getenv('PREFIX') is None:
 class PixieBot(commands.Bot):
     cog_directories = (
         'admin',
-        'general',
-        'utils',
-        'games',
-        'music',
-        'moderation',
         'community',
-        'metrics'
+        'database',
+        'games',
+        'general',
+        'metrics',
+        'moderation',
+        'music',
+        'utils',
     )
 
     def __init__(self):
         super().__init__(
             command_prefix=getenv('PREFIX'),
-            intents=nextcord.Intents.all()
+            intents=nextcord.Intents.all(),
         )
-        self.logger = logging.getLogger('PixieBot')
+        self.strip_after_prefix = True
+        self.logger = logging.getLogger('bot')
+        self.db = "database.sqlite"
 
     def load_cogs(self):
         cogs_path = join(dirname(__file__), 'cogs')
@@ -60,7 +59,7 @@ class PixieBot(commands.Bot):
                                     self.load_extension(f'cogs.{cog_directory}.{file}')
             except Exception as e:
                 print(f'Failed to load cog {cog_directory}')
-                print(e)
+                print(traceback.format_exc(chain=True))
 
     # on ready event
     @commands.Cog.listener()
@@ -69,8 +68,6 @@ class PixieBot(commands.Bot):
         print(f'{self.user.id}')
         print(f'https://discordapp.com/oauth2/authorize?client_id={self.user.id}&scope=bot&permissions=8')
         await self.user.edit(username=self.__class__.__name__)
-
-    # command to invite bot, only the author can see this
 
     def run(self):
         self.load_cogs()

@@ -1,12 +1,19 @@
 """A pyston rest api powered code evaluator"""
-from typing import Optional
+import traceback
+from typing import Optional, Literal
 
-from nextcord.ext import commands
+import nextcord
 from nextcord import File as NFile
+from nextcord.ext import commands, tasks
+from nextcord.ui import View, Select
 from pyston import PystonClient, File
 
 
 class CodeEval(commands.Cog, name="Code Evaluator"):
+    """A pyston rest api powered code evaluator"""
+
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
 
     @commands.command(name='eval', help='Evaluates code')
     async def eval(self, ctx, *, code):
@@ -31,22 +38,11 @@ class CodeEval(commands.Cog, name="Code Evaluator"):
                 await ctx.send('```\nNo output```')
         except Exception as e:
             print(e)
-            await ctx.send(f'```{e}```')
+            await ctx.send(f'```{traceback.format_exc()}```')
 
     @commands.command(name='find_py_docs', help='Uses eval to get the docs for a given module')
     async def find_docs(self, ctx, module, *, function: Optional[str] = None):
-
-        python_versions = [
-            '2.7',
-            '3.6',
-            '3.7',
-            '3.8',
-            '3.9',
-            '3.10'
-        ]
-
-        # reply with a select menu of python versions
-
+        function = function.strip('"\'`\n') if function else None
         client = PystonClient()
         file = f"""
 import inspect
@@ -57,14 +53,10 @@ docs = inspect.getdoc(module)"""
             file += f"""\nif len('{function}') > 0:\n\tdocs = inspect.getdoc(getattr(module, '{function}'))
         """
         file += "\nprint(docs)"
-        output = await client.execute('python', [File(file)])
+        output = await client.execute('python', [File(file), File("""""")])
         if output:
-            # get the value from the output coroutine
-            # if output is not None, send it
             if output:
-                # convert the output to a string
                 output = str(output)
-                # if the output is too long, send it as a file
                 if len(output) > 2000:
                     file = NFile(output)
                     await ctx.send(file=file)
@@ -73,4 +65,4 @@ docs = inspect.getdoc(module)"""
 
 
 def setup(bot):
-    bot.add_cog(CodeEval())
+    bot.add_cog(CodeEval(bot))

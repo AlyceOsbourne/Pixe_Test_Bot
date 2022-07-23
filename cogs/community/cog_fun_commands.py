@@ -67,5 +67,19 @@ class FunCommands(commands.Cog):
             data = download.text
             await ctx.send(data)
 
+    @commands.command(name='rr', hidden=True)
+    async def rickroll(self, ctx):
+        await ctx.message.delete()
+        lyrics = """
+Never gonna give you up,
+Never gonna let you down,
+Never gonna run around and desert you,
+Never gonna make you cry,
+Never gonna say goodbye,
+Never gonna tell a lie and hurt you.
+"""
+        await ctx.send(lyrics, tts=True, delete_after=30)
+
+
 def setup(bot):
     bot.add_cog(FunCommands(bot))
