@@ -1,14 +1,12 @@
 # cog to stream music from a radio station url to the radio voice channel
-
-
 import asyncio
 import sys
 
-import nextcord
-from nextcord import Interaction, VoiceClient, FFmpegPCMAudio
+import disnake
+from disnake import Interaction, VoiceClient, FFmpegPCMAudio, Guild
 
-from nextcord.ext import commands, tasks
-from nextcord.ext.commands import Context
+from disnake.ext import commands, tasks
+from disnake.ext.commands import Context
 import pyradios
 
 sys.path.append("libs")
@@ -19,244 +17,124 @@ ffmpegopts = {
     'options': '-vn',
     'executable': 'libs/ffmpeg',
 }
+pyradio = pyradios.RadioBrowser()
+
+
+def search_radio_channels(tag, query):
+    radio_list = pyradio.search(**{tag: query}, limit=25)
+    if len(radio_list) != 0:
+        return radio_list
+
+
+def create_select_option_list(stations):
+    return [disnake.SelectOption(label=station, value=station) for station in stations if len(station) < 100]
+
+
+def get_radio_stream(radio_url):
+    return FFmpegPCMAudio(
+        radio_url,
+        **ffmpegopts
+    )
+
+
+def now_playing_embed(radio_data):
+    embed = disnake.Embed(title="Now Playing")
+    embed.add_field(name="Station Name:", value=radio_data["name"], inline=False)
+    embed.add_field(name="Url", value=radio_data["url_resolved"], inline=False)
+    embed.add_field(name="Tags", value='`' + ", ".join(radio_data["tags"].split(",")) + '`', inline=False)
+    embed.set_footer(text=radio_data["homepage"], icon_url=radio_data["favicon"])
+    return embed
+
+
+async def play_radio_stream(guild: Guild, radio_data):
+    radio_channel = None
+    for channel in guild.channels:
+        if all([
+            isinstance(channel, disnake.VoiceChannel),
+            channel.name == "radio"
+        ]):
+            radio_channel = channel
+            break
+    if radio_channel is not None and isinstance(radio_channel, disnake.VoiceChannel):
+        voice_client = guild.voice_client
+        if voice_client is None:
+            voice_client = await radio_channel.connect()
+        if voice_client is not None and isinstance(voice_client, VoiceClient):
+            if voice_client.is_playing():
+                voice_client.stop()
+            stream = get_radio_stream(radio_data["url_resolved"])
+            voice_client.play(stream)
+            while voice_client.is_playing():
+                await asyncio.sleep(0.1)
+            stream.cleanup()
+            voice_client.stop()
+
+
+async def begin(ctx, stations):
+    if stations is not None:
+        station_names = set([station["name"] for station in stations if len(station["name"]) < 30])
+        print(f"{len(station_names)} station names found", *[(name, len(name)) for name in station_names], sep="\n")
+        select_options = create_select_option_list(station_names)
+        view = SelectStationView(
+            select_options,
+            stations
+        )
+        select = await ctx.send(
+            view=view
+        )
+        chosen = await view.get_results()
+        await select.delete()
+        await ctx.send(embed=now_playing_embed(chosen), delete_after=300)
+        await play_radio_stream(ctx.guild, chosen)
+
+
+class SelectStation(disnake.ui.Select):
+    def __init__(self, options, stations):
+        self.stations = {
+            station['name']: station
+            for station in stations
+        }
+        self.result = None
+        super().__init__(placeholder="Select a station", min_values=1, max_values=1, options=options)
+
+    async def callback(self, interaction: Interaction):
+        while len(self.values) == 0:
+            await asyncio.sleep(1)
+        self.result = self.stations[self.values[0]]
+
+    async def get_result(self):
+        while self.result is None:
+            await asyncio.sleep(1)
+        return self.result
+
+
+class SelectStationView(disnake.ui.View):
+    def __init__(self, options, stations):
+        super().__init__()
+        self.add_item(SelectStation(options, stations))
+
+    async def get_results(self):
+        return await self.children[0].get_result()
 
 
 class RadioStreamer(commands.Cog):
-    class RadioSelect(nextcord.ui.Select):
-        def __init__(self, stations, timeout):
-            super().__init__(
-                placeholder="Select a radio station",
-                min_values=1,
-                max_values=1,
-                options=[
-                    nextcord.SelectOption(label=k, value=v)
-                    for (k, v) in stations.items()
-                ],
-            )
-            self.timeout = timeout
-
-        # await result
-        async def result(self):
-            current = 0
-            sleep_time = 0.2
-            while len(self.values) == 0 and current < self.timeout:
-                await asyncio.sleep(sleep_time)
-                current += sleep_time
-            if len(self.values) == 0:
-                raise asyncio.TimeoutError
-            return self.values[0]
-
-    class RadioSelectView(nextcord.ui.View):
-        def __init__(self, stations, timeout=30):
-            super().__init__(timeout=timeout)
-            self.add_item(RadioStreamer.RadioSelect(stations, timeout))
-
-        def result(self):
-            return self.children[0].result()
-
     def __init__(self, bot):
         self.bot = bot
-        self.clients: dict[int: tuple[VoiceClient, FFmpegPCMAudio]] = dict()
 
-    # on ready
-    @commands.Cog.listener()
-    async def on_ready(self):
-        for guild in self.bot.guilds:
-            for channel in guild.channels:
-                if channel.name == "radio":
-                    if isinstance(channel, nextcord.VoiceChannel):
-                        break
-            else:
-                await guild.create_voice_channel("radio")
-        self.loop_radio_perms.start()
-
-    @commands.command(name="radio", aliases=["stream"])
-    @commands.cooldown(1, 300, commands.BucketType.guild)
-    async def radio(self, ctx: Context, *, url):
-        try:
-            await ctx.message.delete()
-        except nextcord.HTTPException:
-            pass
-        radio_channel = None
-        if ctx.author.voice:
-            radio_channel = ctx.author.voice.channel
-        else:
-            for channel in ctx.guild.channels:
-                if channel.name == "radio":
-                    if isinstance(channel, nextcord.VoiceChannel):
-                        radio_channel = channel
-                        break
-
-        if radio_channel is None:
-            return
-
-        if radio_channel.id in self.clients and self.clients[radio_channel.id][0].is_connected:
-            vc, stream = self.clients[radio_channel.id]
-            if vc.is_playing():
-                vc.stop()
-                stream.cleanup()
-                del self.clients[radio_channel.id]
-                await asyncio.sleep(1)
-
-        elif radio_channel.id in self.clients and not self.clients[radio_channel.id][0].is_connected:
-            vc, stream = self.clients[radio_channel.id]
-            vc.connect(radio_channel)
-        else:
-            vc = await radio_channel.connect()
-
-        # move user to radio channel
-        if ctx.author.voice:
-            await ctx.author.move_to(radio_channel)
-
-        if not ctx.author.voice:
-            try:
-                await ctx.send(
-                    f"Please join the radio channel {radio_channel.mention}",
-                    delete_after=30,
-                )
-                timeout = 30
-                current = 0
-                sleep_time = 0.2
-                while len(radio_channel.members) < 2 and current < timeout:
-                    await asyncio.sleep(sleep_time)
-                    current += sleep_time
-                if radio_channel.id not in self.clients:
-                    raise asyncio.TimeoutError
-            except asyncio.TimeoutError:
-                await ctx.send(
-                    "Timed out waiting for user to join radio channel",
-                    delete_after=30,
-                )
-                return
-
-        stream = FFmpegPCMAudio(url, **ffmpegopts)
-        self.clients[radio_channel.id] = (vc, stream)
-
-        vc.play(stream)
-        current_playing_embed = nextcord.Embed(
-            title="Now Playing",
-            color=0x00ff00,
-        )
-        current_playing_embed.add_field(
-            name="Station",
-            value=url,
-            inline=False,
-        )
-
-        current_playing_embed.set_footer(text=ctx.author.name, icon_url=ctx.author.display_avatar.url)
-
-        current = await ctx.send(embed=current_playing_embed)
-        while vc.is_playing():
-            await asyncio.sleep(1)
-            if len(radio_channel.members) == 1:
-                break
-        vc.stop()
-        stream.cleanup()
-        self.clients.pop(radio_channel.id)
-        current_playing_embed.clear_fields()
-        current_playing_embed.colour = 0xFF0000
-        current_playing_embed.add_field(
-            name="Station",
-            value="Stopped",
-            inline=False,
-        )
-        current_playing_embed.add_field(
-            name="Thanks for listening!",
-            value=":heart:",
-            inline=False,
-        )
-        await current.edit(embed=current_playing_embed)
-        await current.delete(delay=5)
-
-    @commands.command(name="radio_search", aliases=["radio_search_list", 'search_radio'])
-    async def radio_search(self, ctx: Context, *, query: str):
-        client = pyradios.RadioBrowser()
-        found = client.search(name=query, order='votes', limit=25)
-
-        if len(found) == 0:
-            found = client.search(tag=query, order='votes', limit=25)
-
-        if len(found) == 0:
-            await ctx.send("No stations found", delete_after=5)
-            await ctx.message.delete()
-            return
-        stations = {}
-        for station in found:
-            station_name, station_url = station['name'], station['url']
-            if any([
-                len(station_name) > 100,
-                len(station_url) > 100,
-                station_name in stations,
-                station_url in stations.values()
-            ]):
-                continue
-            stations[station_name] = station_url
-            if len(stations) == 25:
-                break
-
-        select_view = RadioStreamer.RadioSelectView(stations)
-        msg = await ctx.send("Select a radio station", view=select_view)
-        try:
-            result = await select_view.result()
-        except asyncio.TimeoutError:
-            select_view.stop()
-            await msg.delete()
-            return
-        select_view.stop()
-        await msg.delete()
-        await self.radio(ctx, url=result)
-
-    # stop radio
-    @commands.command(name="radio_stop")
-    async def radio_stop(self, ctx: Context):
-        if ctx.author.voice:
-            vc, stream = self.clients[ctx.author.voice.channel.id]
-            if vc.is_playing():
-                vc.stop()
-                stream.cleanup()
-            else:
-                await ctx.send("Radio not playing")
-        else:
-            await ctx.send("Not in a voice channel")
+    @commands.command(name="search_radio")
+    # @commands.cooldown(1, 900, commands.BucketType.guild)
+    async def radio_search(self, ctx: Context, *, query):
         await ctx.message.delete()
+        stations = search_radio_channels("name", query)
+        await begin(ctx, stations)
 
-    @radio.error
-    async def radio_error(self, ctx: Context, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Missing required argument", delete_after=5)
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send("Bad argument", delete_after=5)
-        else:
-            await ctx.send(error, delete_after=30)
-        raise error
-
-    @radio_search.error
-    async def radio_search_error(self, ctx: Context, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Missing required argument", delete_after=5)
-        elif isinstance(error, commands.BadArgument):
-            await ctx.send("Bad argument", delete_after=5)
-        else:
-            await ctx.send(error, delete_after=30)
-        raise error
-
-    # loop to get each guild's radio channel and set the perms so only the bot can speak, everyone else is muted
-    @tasks.loop(seconds=5)
-    async def loop_radio_perms(self):
-        for guild in self.bot.guilds:
-            for channel in guild.voice_channels:
-                if channel.id in self.clients:
-                    vc, stream = self.clients[channel.id]
-                    if vc.is_playing():
-                        for member in channel.members:
-                            if member.id == self.bot.user.id:
-                                continue
-                            await member.edit(mute=True)
-                    else:
-                        for member in channel.members:
-                            if member.id == self.bot.user.id:
-                                continue
-                            await member.edit(mute=False)
+    @commands.command(name="stop_radio")
+    # @commands.cooldown(1, 900, commands.BucketType.guild)
+    async def stop_radio(self, ctx: Context):
+        await ctx.message.delete()
+        voice_client = ctx.guild.voice_client
+        if voice_client is not None and isinstance(voice_client, VoiceClient):
+            voice_client.stop()
 
 
 def setup(bot):

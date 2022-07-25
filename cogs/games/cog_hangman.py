@@ -2,10 +2,10 @@
 import asyncio
 from collections.abc import Iterable
 
-import nextcord
-from nextcord import Embed, Thread as TextThread
-from nextcord.ext import commands, tasks
-from nextcord.ext.commands import Context
+import disnake
+from disnake import Embed, Thread as TextThread
+from disnake.ext import commands, tasks
+from disnake.ext.commands import Context
 from aiohttp import ClientSession
 from asyncio import sleep, create_task
 
@@ -23,7 +23,6 @@ class HangManInstance:
 
         self.word = word
         self.letters = set([letter for letter in word if letter.isalpha()])
-        print(*self.letters, sep=', ')
         self.guessed_letters = set()
         self.available_letters = set(
             'abcdefghijklmnopqrstuvwxyz'
@@ -101,7 +100,7 @@ class HangMan(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='hangman')
+    @commands.command(name='hangman', help=f"play hangman with the bot, game modes are {', '.join(game_modes.keys())}")
     async def hangman(self, ctx: Context, *, game_mode: str = 'default'):
         # create a new game
         await ctx.message.delete()
@@ -139,7 +138,7 @@ class HangMan(commands.Cog):
 
             embed = await game.update_game_embed(Embed(title="Hangman"))
             current = await current.edit(embed=embed)
-            
+
             if game.is_over():
                 current = await current.edit(
                     embed=Embed(

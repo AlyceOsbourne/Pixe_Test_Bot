@@ -1,5 +1,5 @@
-import nextcord
-from nextcord.ext import commands
+import disnake
+from disnake.ext import commands
 import os
 import random
 
@@ -13,9 +13,9 @@ class ServerBot_Control(commands.Cog, name='Cog_Control'):
     async def members_status(self, ctx):
         idle, online, offline = 0, 0, 0
         for member in ctx.guild.members:
-            if member.status == nextcord.Status.online:
+            if member.status == disnake.Status.online:
                 online += 1
-            elif member.status == nextcord.Status.offline:
+            elif member.status == disnake.Status.offline:
                 offline += 1
             else:
                 idle += 1
@@ -44,7 +44,7 @@ class ServerBot_Control(commands.Cog, name='Cog_Control'):
                 cog_name = 'cogs.' + file[:-3]
                 try:
                     self.bot.reload_extension(cog_name)
-                except nextcord.DiscordException as e:
+                except disnake.DiscordException as e:
                     no_error = False
                     await ctx.send('\n'.join(['```', f'{e}', '```']))
 

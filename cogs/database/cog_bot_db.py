@@ -1,23 +1,23 @@
 # set up a basic db with users and guilds
-from nextcord.ext import commands
+from disnake.ext import commands
 import aiosqlite
 
-table_creation_statements = {
-    'users': """
+table_creation_statements = dict(
+    users="""
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER,
-                    user_id TEXT,
+                    user_id TEXT UNIQUE,
                     PRIMARY KEY (id)
                 )
             """,
-    'guilds': """
+    guilds="""
                 CREATE TABLE IF NOT EXISTS guilds (
                     id INTEGER,
-                    guild_id TEXT,
+                    guild_id TEXT UNIQUE,
                     PRIMARY KEY (id)
                 )
             """,
-    'guild_members': """
+    guild_members="""
                 CREATE TABLE IF NOT EXISTS guild_members (
                     guild_id TEXT,
                     user_id TEXT,
@@ -26,7 +26,7 @@ table_creation_statements = {
                     FOREIGN KEY (user_id) REFERENCES users(user_id)
                 )
             """
-}
+)
 
 
 class PixieBotDB(commands.Cog, name="DB"):

@@ -1,4 +1,4 @@
-from nextcord.ext import commands
+from disnake.ext import commands
 import aiosqlite
 
 

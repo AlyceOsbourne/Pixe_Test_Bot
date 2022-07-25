@@ -1,13 +1,14 @@
 """cog that has command to delete n previous messages"""
 
-from nextcord.ext import commands
+from disnake.ext import commands
 
 
 class ChannelSweeper(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='sweep', aliases=['clean'])
+    @commands.command(name='sweep', aliases=['clean'], hidden=True)
+    @commands.has_permissions(manage_messages=True)
     async def sweep(self, ctx, amount):
         if amount == 'all':
             await ctx.channel.purge(limit=None)

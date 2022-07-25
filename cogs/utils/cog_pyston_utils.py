@@ -2,10 +2,10 @@
 import traceback
 from typing import Optional, Literal
 
-import nextcord
-from nextcord import File as NFile
-from nextcord.ext import commands, tasks
-from nextcord.ui import View, Select
+import disnake
+from disnake import File as NFile
+from disnake.ext import commands, tasks
+from disnake.ui import View, Select
 from pyston import PystonClient, File
 
 

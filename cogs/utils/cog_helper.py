@@ -1,8 +1,8 @@
 # cog that gets a list of commands, their args and help string if one is available
 from typing import Optional
 
-import nextcord
-from nextcord.ext import commands
+import disnake
+from disnake.ext import commands
 
 
 class Helper(commands.Cog):
@@ -10,9 +10,10 @@ class Helper(commands.Cog):
         self.bot = bot
         bot.remove_command("help")
 
-    @commands.command(name='help', help='Get help on a command')
+    @commands.command(name='help', help='Get help on a command', aliases=['commands'])
     async def help(self, ctx, *, command_name: Optional[str]):
-        embed = nextcord.Embed(title="Help")
+        await ctx.message.delete()
+        embed = disnake.Embed(title="Help")
         if command_name:
             command = self.bot.get_command(command_name)
             if command:  #
@@ -31,7 +32,7 @@ class Helper(commands.Cog):
                     command.help if command.help else "No help available"
                 )
                 for command
-                in self.bot.commands
+                in sorted(self.bot.commands, key=lambda c: c.name)
                 if not command.hidden
             )
             embed.description = commands

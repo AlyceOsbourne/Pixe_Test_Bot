@@ -4,8 +4,8 @@ import time
 from datetime import datetime, timedelta
 
 import aiosqlite
-import nextcord
-from nextcord.ext import commands, tasks
+import disnake
+from disnake.ext import commands, tasks
 import json
 
 
@@ -40,9 +40,9 @@ class ModTools(commands.Cog):
             await db.commit()
             self.remove_warns.start()
 
-    @commands.command(name="warn")
-    async def warn(self, ctx, user: nextcord.Member, *, reason):
-        """Warn a user for a reason"""
+    @commands.command(name="warn", help="Warn a user", hidden=True)
+    @commands.has_guild_permissions(ban_members=True)
+    async def warn(self, ctx, user: disnake.Member, *, reason):
         async with aiosqlite.connect(self.bot.db) as db:
             async with db.cursor() as cursor:
                 # add warn to db
@@ -63,7 +63,8 @@ class ModTools(commands.Cog):
                 elif num_warns == 3:
                     await self.ban_user(ctx, user, reason)
 
-    @commands.command(name="ban")
+    @commands.command(name="ban", help="Ban a user", hidden=True)
+    @commands.has_guild_permissions(ban_members=True)
     async def ban_user(self, ctx, user, reason):
         async with aiosqlite.connect(self.bot.db) as db:
             async with db.cursor() as cursor:

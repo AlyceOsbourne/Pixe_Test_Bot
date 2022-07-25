@@ -1,31 +1,31 @@
-# The bot should react to people joining voice channels, all except for the AFK channel. The bot should monitor all
-# of the VC channels together counting a total number of people in them.
+# The bot should react to people joining voice stations, all except for the AFK channel. The bot should monitor all
+# of the VC stations together counting a total number of people in them.
 #
-# There should be 2 additional channels,
+# There should be 2 additional stations,
 # called vc_notification_1 and vc_notification_2.
 #
-# Whenever total number of people in the voice channels changes from
+# Whenever total number of people in the voice stations changes from
 # 0 to 1 and stays greater than zero for at least a minute (to exclude people joining and leaving randomly),
 # the bot should put a message inside of the vc_notification_1 with something like @ everyone, @ username joined the
 # channel_name VC channel.
 
-# Whenever total number if people in the voice channels changes from <2 to 2 and stays
+# Whenever total number if people in the voice stations changes from <2 to 2 and stays
 # greater than zero for at least a minute, the bot should put a message inside of the vc_notification_2 with
 # something like @ everyone, @ username1 and @ username2 joined the channel_name VC channel. To not trigger these
 # messages when people are joining and leaving, for example when there's a party of 1 and the second person joins,
 # then leaves, then another one joins and leaves then yet another does the same, there should be a timeout of 15
-# minutes between subsequent messages posted to both channels.
+# minutes between subsequent messages posted to both stations.
 # Alternatively maybe a message can be still posted but
-# without pinking @ everyone, I'm not sure yet. Now, these 2 channels are going to be hidden by default and only
+# without pinking @ everyone, I'm not sure yet. Now, these 2 stations are going to be hidden by default and only
 # available to people with the vc1_notification and vc2_notification roles. Sentdebot should react to 3 commands: -
 # !vcnotification 1 - adds vc1_notification role to the user invoking it - !vcnotification 2 - adds vc2_notification
 # - !vcnotification off - removes both roles I'm not sure if anyone would benefit from having both of these roles.
 # Maybe? Maybe add !vcnotification 12 or !vcnotification 3 or !vcnotification 1+2 or something like this?
 import time
 
-import nextcord
+import disnake
 from discord.ext import commands
-from nextcord.ext import tasks
+from disnake.ext import tasks
 
 
 class VCMonitor(commands.Cog):
@@ -54,7 +54,7 @@ class VCMonitor(commands.Cog):
     async def loop_vc_monitor(self):
         for guild in self.bot.guilds:
             for channel in guild.channels:
-                if isinstance(channel, nextcord.VoiceChannel):
+                if isinstance(channel, disnake.VoiceChannel):
                     if channel.id not in self.currently_occupied_channels and len(channel.members) > 0:
                         self.currently_occupied_channels[channel.id] = {
                             "members": [(member, time.time()) for member in channel.members],

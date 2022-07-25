@@ -1,8 +1,8 @@
 # cog with command to check the bot latency, connection speed etc etc etc
-import nextcord
-from nextcord.ext import commands
+import disnake
+from disnake.ext import commands
 import speedtest
-from nextcord.ext.commands import Context
+from disnake.ext.commands import Context
 
 
 class ConnectionStatusCog(commands.Cog):
@@ -12,7 +12,7 @@ class ConnectionStatusCog(commands.Cog):
     @commands.command("check_connection_status", aliases=["st"])
     async def connection_stats(self, ctx: Context):
         await ctx.message.delete()
-        embed = nextcord.Embed(description="Speed Test")
+        embed = disnake.Embed(description="Speed Test")
 
         confirm = await ctx.send(embed=embed)
 
@@ -35,7 +35,7 @@ class ConnectionStatusCog(commands.Cog):
         r = int(min(255, max(0, dl * 20)))
         g = int(min(255, max(0, ul * 20)))
         b = int(min(255, max(0, 255 - (ping * 2))))
-        embed.colour = nextcord.Colour.from_rgb(r, g, b)
+        embed.colour = disnake.Colour.from_rgb(r, g, b)
         embed.set_footer(text="'¯\_(ツ)_/¯'", icon_url=ctx.bot.user.display_avatar.url)
         await confirm.edit(embed=embed, delete_after=60)
 

@@ -1,10 +1,10 @@
-# use nextcord.ext.commands.PixieBot to create the bot
+# use disnake.ext.commands.PixieBot to create the bot
 import logging
 import os
 import traceback
 
-import nextcord
-from nextcord.ext import commands, tasks
+import disnake
+from disnake.ext import commands, tasks
 from dotenv import load_dotenv
 from os import getenv
 from os.path import join, dirname, isdir, isfile, exists
@@ -34,7 +34,7 @@ class PixieBot(commands.Bot):
     def __init__(self):
         super().__init__(
             command_prefix=getenv('PREFIX'),
-            intents=nextcord.Intents.all(),
+            intents=disnake.Intents.all(),
         )
         self.strip_after_prefix = True
         self.logger = logging.getLogger('bot')
@@ -66,8 +66,6 @@ class PixieBot(commands.Bot):
     async def on_ready(self):
         print(f'{self.user.name} is online!')
         print(f'{self.user.id}')
-        print(f'https://discordapp.com/oauth2/authorize?client_id={self.user.id}&scope=bot&permissions=8')
-        await self.user.edit(username=self.__class__.__name__)
 
     def run(self):
         self.load_cogs()

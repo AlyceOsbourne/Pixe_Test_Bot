@@ -4,9 +4,9 @@ Parses from projecteuler.net/recent
 """
 import datetime
 
-import nextcord
+import disnake
 import pytz
-from nextcord.ext import commands, tasks
+from disnake.ext import commands, tasks
 
 import requests
 from bs4 import BeautifulSoup
@@ -24,14 +24,14 @@ class DailyChallenge(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         for guild in self.bot.guilds:
-            if not nextcord.utils.get(guild.text_channels, name='challenge'):
+            if not disnake.utils.get(guild.text_channels, name='challenge'):
                 await guild.create_text_channel('challenge')
         await self.daily_challenge.start()
 
     @tasks.loop(hours=12)
     async def daily_challenge(self):
         await self.bot.wait_until_ready()
-        channels = nextcord.utils.get(self.bot.get_all_channels(), name='challenge')
+        channels = disnake.utils.get(self.bot.get_all_channels(), name='challenge')
         if channels is not None:
             soup = BeautifulSoup(requests.get('https://projecteuler.net/recent').text, 'html.parser')
             href = soup.find('table', {'id': 'problems_table'}).find_all('tr')[1].find('a')['href']
@@ -43,7 +43,7 @@ class DailyChallenge(commands.Cog):
                         if message.embeds:
                             if challenge in message.embeds[0].description:
                                 return
-            await channels.send("Here is your challenge!", embed=nextcord.Embed(description=challenge))
+            await channels.send("Here is your challenge!", embed=disnake.Embed(description=challenge))
 
 
 def setup(bot):
