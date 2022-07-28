@@ -35,10 +35,8 @@ class CommandConverter(commands.Cog):
     # on error
     @commands.Cog.listener()
     async def on_command_error(self, ctx: Context, error):
-        # if command is not found, do nothing else continue as usual
         if isinstance(error, commands.CommandNotFound):
             return
-        # if command is on cooldown, do nothing else continue as usual
 
 
 def setup(bot):

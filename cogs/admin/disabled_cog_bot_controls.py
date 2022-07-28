@@ -3,11 +3,16 @@ from disnake.ext import commands
 import os
 import random
 
+guild_id = 988202173152260176
+
 
 class ServerBot_Control(commands.Cog, name='Cog_Control'):
     def __init__(self, bot):
         self.bot = bot
         self.bot.remove_command('help')
+        self.vanity_roles = [
+            
+        ]
 
     @commands.command(help="get all the members' status")
     async def members_status(self, ctx):
@@ -62,20 +67,14 @@ class ServerBot_Control(commands.Cog, name='Cog_Control'):
         cmd_list = [f'{self.bot.command_prefix}{cmd.name}' for cmd in self.bot.commands]
         if msg.author.bot or (msg.content in cmd_list) or len(msg.content) == 0: return
 
-        guild = self.bot.get_guild(int(self.bot.guild_id))
+        guild = self.bot.get_guild(guild_id)
         author = msg.author
 
         if random.randint(1, 100) == 57:
-            already_given = [role for role in author.roles if role.id in [
-                # todo replace this with comprehension
-            ]]
+            already_given = [role for role in author.roles if role.id in self.vanity_roles]
 
             if not already_given:
-                role_id = random.choice(
-                    [
-                        # todo replace this with comprehension
-                    ]
-                )
+                role_id = random.choice(self.vanity_roles)
                 role = guild.get_role(role_id)
 
                 await author.add_roles(role)

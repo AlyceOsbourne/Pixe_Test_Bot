@@ -63,7 +63,6 @@ class UserMetrics(commands.Cog, name='User Metrics'):
 
     @commands.Cog.listener()
     async def on_ready(self):
-        if os.path.exists(self.bot.db): return
         print(f'creating: {self.bot.db}')
 
         async with aiosqlite.connect(self.bot.db) as db:
@@ -81,7 +80,7 @@ class UserMetrics(commands.Cog, name='User Metrics'):
 
     async def flush(self):
         # TODO(qlavi): There is a possibilty that this queue might get a new message WHILE being emptied.
-        insert_query = "INSERT INTO Messages(id, on_channel_id, user_id, time_stamp, content) VALUES (?, ?, ?, ?, ?)"
+        insert_query = "INSERT INTO messages(id, on_channel_id, user_id, time_stamp, content) VALUES (?, ?, ?, ?, ?)"
         async with aiosqlite.connect(self.bot.db) as db:
             await db.executemany(insert_query, self.pull_msg_from_queue())
             await db.commit()
@@ -95,7 +94,8 @@ class UserMetrics(commands.Cog, name='User Metrics'):
         cmd_list = [f'{self.bot.command_prefix}{cmd.name}' for cmd in self.bot.commands]
         if msg.author.bot or (msg.content in cmd_list) or len(msg.content) == 0: return
 
-        if self.msg_queue.full(): await self.flush()
+        if self.msg_queue.full():
+            await self.flush()
         self.msg_queue.put(
             (f'{msg.id}', f'{msg.channel.id}', msg.author.id, msg.created_at.timestamp(), msg.content))
 

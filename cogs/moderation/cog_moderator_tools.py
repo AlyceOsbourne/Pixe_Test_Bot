@@ -74,8 +74,16 @@ class ModTools(commands.Cog):
                     INSERT INTO ban_data (user_id, guild_id, reason, ban_time, ban_data)
                     VALUES (?, ?, ?, ?, ?)
                 """, (user.id, ctx.guild.id, reason, datetime.utcnow(), messages))
+                # sweep user from messages db
+                await cursor.execute("""
+                    DELETE FROM messages
+                    WHERE user_id = ? AND guild_id = ?
+                """, (user.id, ctx.guild.id))
                 await db.commit()
                 await user.ban(reason=reason)
+                # batch delete messages from server
+
+        # sweep the users messages
 
     # loop to remove warns that are older than than 21 days
     @tasks.loop(hours=24)
